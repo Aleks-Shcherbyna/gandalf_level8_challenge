@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Focused attack using the perfume prompt - highest bypass rate."""
 
+import os
 import re
+import sys
 import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cli'))
 from gandalf import send_message, load_cookies
 
 # Top 3 prompts from optimization run

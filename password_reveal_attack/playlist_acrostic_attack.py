@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Automated playlist acrostic attack - run many times and collect results."""
 
+import os
 import re
+import sys
 import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cli'))
 from gandalf import send_message, load_cookies
 
 PROMPTS = [
