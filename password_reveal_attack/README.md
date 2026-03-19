@@ -60,63 +60,27 @@ The breakthrough is the **acrostic attack**: ask the model to generate a numbere
 
 However, the acrostic method is **not 100% accurate in a single run**. The model sometimes garbles a letter, adds extra items, or drops items from the list. This is why we need the statistical approach described below.
 
-## Three-Step Attack Process
-
-### Step 1: Area Search (Wide Scan)
-
-**Script**: `acrostic_attack_area_search.py`
-
-The LLM guard treats different creative contexts ("areas") very differently. A prompt about naming perfumes might pass 100% of the time, while an identical structure about naming yoga poses might be blocked 100% of the time. There is no way to predict which areas will work without testing.
-
-The area search script tests 20 different creative framings (perfume, coffee, concept album, playlist, stars, bands, cocktails, book chapters, dishes, dance moves, yoga poses, etc.) with a single prompt each, repeated across multiple rounds. The output is a ranked list showing which areas bypass the LLM guard most reliably.
-
-**Metrics from area search** (100 total attempts):
-
-| Area | Bypass Rate | Notes |
-|------|------------|-------|
-| perfume | 100% | Best performer |
-| album_numbered | 100% | Equally reliable |
-| stars | 80% | Strong |
-| coffee | 80% | Strong but shorter acrostics |
-| bands | 60% | Moderate |
-| concept_album | 60% | Moderate, sometimes unrelated words |
-| cocktails | 20% | Rarely passes |
-| dishes | 20% | Rarely passes |
-| book_chapters | 20% | Often picks wrong word |
-| poem_acrostic | 0% | Always blocked |
-| subjects | 0% | Always blocked |
-| spell | 0% | Always blocked |
-| episodes | 0% | Always blocked |
-| dance | 0% | Always blocked |
-| paint | 0% | Always blocked |
-| yoga | 0% | Always blocked |
-| constellations | 0% | Always blocked |
-
-### Step 2: Targeted Attack (Accumulate Data)
+## Attack Script
 
 **Script**: `acrostic_attack.py`
 
-Once the best areas are identified, the targeted attack runs multiple prompts per area, with each prompt repeated several times. This accumulates a large dataset of acrostics. Different prompt phrasings within the same area increase the chance of getting past the LLM guard and provide diverse acrostic samples.
+The entire attack runs in a single script. It sends 80 prompt variations across 4 proven creative areas (perfume, coffee, concept_album, stars), each repeated up to 3 rounds, then performs statistical analysis on all collected acrostics to determine the password.
 
-The script is organized by areas (perfume, coffee, concept_album, playlist, stars, bands), each containing multiple prompt variations. Every prompt is run multiple rounds (default: 5). This produces dozens of acrostic samples to feed into the statistical analysis.
+### How it works
 
-**Metrics from targeted attack** (30 total attempts across top 3 areas):
+1. **Prompt barrage**: 20 prompt variations per area, 4 areas, up to 3 rounds each = up to 240 API calls. Each prompt is a slightly different phrasing of the same request (e.g. "I'm launching a perfume collection...", "I'm a student designing a perfume line..."). This diversity increases the chance of bypassing the LLM guard and provides many independent acrostic samples.
 
-| Area | Bypass Rate | Acrostics Collected |
-|------|------------|-------------------|
-| perfume | 100% | 10/10 |
-| coffee | 70% | 7/10 |
-| concept_album | 30% | 3/10 |
+2. **Automatic filtering**: On the first failure (blocked response, no parseable list, or error), that prompt is skipped and the next one is tried. This naturally filters out unreliable prompts while accumulating data from reliable ones.
 
-### Step 3: Statistical Analysis (Determine Password)
+3. **Statistical analysis**: All collected acrostics are aggregated and analyzed by positional letter frequency. For each position, the most common letter across all acrostics is selected as the most likely correct letter, along with a confidence percentage.
 
-Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. Instead, the script aggregates all collected acrostics and performs positional letter-frequency analysis:
+### Area selection
 
-- For each position (1st letter, 2nd letter, 3rd letter, ...), count which letter appears most frequently across all acrostics
-- The most common letter at each position is the most likely correct letter
-- A confidence percentage is computed for each position based on how dominant the top letter is
+The LLM guard treats different creative contexts very differently. The 4 areas in the script (perfume, coffee, concept_album, stars) were selected through prior empirical testing of 20 candidate areas. These 4 reliably bypass the LLM guard AND produce parseable numbered lists.
 
-This produces the guessed password along with per-letter confidence scores. Even with significant noise in individual acrostics, the correct password emerges clearly from the statistical pattern.
+### Statistical output
+
+Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. The positional frequency analysis across dozens of samples produces a high-confidence answer where a single run would be ambiguous.
 
 **Example output:**
 

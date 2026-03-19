@@ -13,8 +13,7 @@ gandalf_prompting/
     gandalf_log.json                     # Full log of all API interactions
     cookies.json                         # Session cookies for API authentication (not committed)
   password_reveal_attack/
-    acrostic_attack_area_search.py       # Step 1: Wide scan of 20 prompt framings to find best areas
-    acrostic_attack.py                   # Step 2+3: Targeted attack across best areas + statistical analysis
+    acrostic_attack.py                   # Full attack: 80 prompts across 4 areas + statistical analysis
     README.md                            # Detailed explanation of the challenge, defenses, and attacks
   venv/                                  # Python virtual environment
 ```
@@ -46,13 +45,10 @@ python cli/gandalf.py -i
 python cli/gandalf.py "Your prompt here"
 ```
 
-### Run attacks
+### Run attack
 
 ```bash
-# Step 1: Area search -- test 20 different prompt framings to find which areas bypass defenses
-python password_reveal_attack/acrostic_attack_area_search.py
-
-# Step 2+3: Targeted acrostic attack across best areas + statistical password analysis
+# Run acrostic attack (80 prompts across 4 areas, 3 rounds each) + statistical analysis
 python password_reveal_attack/acrostic_attack.py
 ```
 
