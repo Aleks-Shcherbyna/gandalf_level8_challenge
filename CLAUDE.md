@@ -55,7 +55,9 @@ python password_reveal_attack/acrostic_attack.py
 
 ## Key Technical Details
 
-- **API endpoint**: `https://gandalf-api.lakera.ai/api/send-message` (POST with `defender` and `prompt` fields)
+- **API endpoints**:
+  - `https://gandalf-api.lakera.ai/api/send-message` (POST with `defender` and `prompt` fields)
+  - `https://gandalf-api.lakera.ai/api/guess-password` (POST with `defender` and `password` fields, returns `{"success": true/false}`)
 - **Defender ID**: `gandalf-the-white`
 - **Logging**: All API calls are automatically logged via `send_message()` in `gandalf.py` to `cli/gandalf_log.json`
 - **Rate limiting**: Attack scripts include 0.5s delays between requests to avoid rate limiting

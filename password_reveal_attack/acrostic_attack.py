@@ -265,4 +265,4 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
 
-    run_analysis(all_acrostics)
+    run_analysis(all_acrostics, cookies=cookies)

@@ -74,7 +74,7 @@ The 4 areas were selected through prior empirical testing of 20 candidate areas.
 
 ### `analyze.py` — multi-strategy analysis
 
-Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. The analysis module runs three independent strategies on the collected acrostics and outputs multiple password candidates from each:
+Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. The analysis module runs four strategies:
 
 **Strategy 1: Exact Frequency** — counts how often each complete acrostic string appears. Outputs top 10. Simple but effective when the model frequently produces the exact password.
 
@@ -82,14 +82,16 @@ Since individual acrostics are imperfect -- the model occasionally substitutes, 
 
 **Strategy 3: Length-Grouped** — groups acrostics by length and runs a separate positional analysis for each group. Outputs the best candidate per length. This reveals whether different-length acrostics represent truncated versions of the same password or different words entirely.
 
+**Strategy 4: Verification** — collects all unique candidates from strategies 1-3 and tries each one against the `guess-password` API endpoint. Prints CORRECT/wrong for each candidate. This is the final answer.
+
 **Example output:**
 
 ```
 ======================================================================
 STRATEGY 1: EXACT FREQUENCY
 ======================================================================
-  #1   OCTOPODES            (12x, 52%)
-  #2   OCTPODES             (3x, 13%)
+  #1   OCTOPODES            (12x, 55%)
+  #2   OCTPODES             (3x, 14%)
   #3   OCTOPDES             (2x, 9%)
   ...
 
@@ -113,6 +115,16 @@ STRATEGY 3: LENGTH-GROUPED
 ======================================================================
   Length 9 (n= 16):  OCTOPODES            (avg conf: 97%)
   Length 8 (n=  6):  OCTPODES             (avg conf: 81%)
+
+======================================================================
+STRATEGY 4: VERIFICATION
+Trying 15 unique candidates against the API
+======================================================================
+  OCTOPODES            CORRECT
+  OCTPODES             wrong
+  ...
+
+  PASSWORD FOUND: OCTOPODES
 ```
 
 ## How to Read the Password from Output

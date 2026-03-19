@@ -2,14 +2,18 @@
 """
 Multi-strategy analysis of collected acrostics.
 
-Three strategies for generating password candidates:
+Four strategies for generating password candidates:
 1. Exact frequency — top 10 most common complete acrostic strings
 2. Joint probability — top 10 candidates by combining likely letters at each position
 3. Length-grouped — best candidate per observed length group
+4. Verification — try all unique candidates against the Gandalf API
 """
 
 import heapq
+import time
 from collections import Counter
+
+from gandalf import guess_password, load_cookies
 
 
 def _positional_distributions(acrostics):
@@ -49,12 +53,15 @@ def strategy_exact_frequency(acrostics, top_n=10):
 
     freq = Counter(acrostics)
     total = len(acrostics)
+    candidates = []
 
     for rank, (acrostic, count) in enumerate(freq.most_common(top_n), 1):
         pct = count / total
         print(f"  #{rank:<3} {acrostic:<20} ({count}x, {pct:.0%})")
+        candidates.append(acrostic)
 
     print()
+    return candidates
 
 
 def _filter_outliers(acrostics):
@@ -143,6 +150,7 @@ def strategy_joint_probability(acrostics, top_n=10):
         print(f"  #{rank:<3} {word:<20} (prob: {prob:.4f})")
 
     print()
+    return [word for word, _ in results]
 
 
 def strategy_length_grouped(acrostics, top_n=10):
@@ -156,6 +164,7 @@ def strategy_length_grouped(acrostics, top_n=10):
     for a in acrostics:
         length_groups.setdefault(len(a), []).append(a)
 
+    candidates = []
     for length in sorted(length_groups.keys(), reverse=True):
         group = length_groups[length]
         distributions = _positional_distributions(group)
@@ -163,12 +172,38 @@ def strategy_length_grouped(acrostics, top_n=10):
         avg_conf = sum(d[0][1] for d in distributions) / len(distributions)
         print(f"  Length {length} (n={len(group):>3}):  {best_word:<20} "
               f"(avg conf: {avg_conf:.0%})")
+        candidates.append(best_word)
 
+    print()
+    return candidates
+
+
+def strategy_verify(candidates, cookies):
+    """Strategy 4: Try all unique candidates against the Gandalf API."""
+    print("=" * 70)
+    print("STRATEGY 4: VERIFICATION")
+    print(f"Trying {len(candidates)} unique candidates against the API")
+    print("=" * 70)
+
+    found = []
+    for candidate in candidates:
+        success = guess_password(candidate, cookies=cookies)
+        status = "CORRECT" if success else "wrong"
+        print(f"  {candidate:<20} {status}")
+        if success:
+            found.append(candidate)
+        time.sleep(0.3)
+
+    print()
+    if found:
+        print(f"  PASSWORD FOUND: {found[0]}")
+    else:
+        print("  No correct password found.")
     print()
 
 
-def run_analysis(acrostics):
-    """Run all strategies on the given acrostics."""
+def run_analysis(acrostics, cookies=None):
+    """Run all strategies on the given acrostics, then verify candidates."""
     if not acrostics:
         print("No acrostics collected -- cannot perform analysis.")
         return
@@ -178,6 +213,18 @@ def run_analysis(acrostics):
     print(f"Length distribution: {dict(length_counts.most_common())}")
     print()
 
-    strategy_exact_frequency(acrostics)
-    strategy_joint_probability(acrostics)
-    strategy_length_grouped(acrostics)
+    c1 = strategy_exact_frequency(acrostics) or []
+    c2 = strategy_joint_probability(acrostics) or []
+    c3 = strategy_length_grouped(acrostics) or []
+
+    # Deduplicate while preserving order
+    seen = set()
+    all_candidates = []
+    for c in c1 + c2 + c3:
+        if c not in seen:
+            seen.add(c)
+            all_candidates.append(c)
+
+    if cookies is None:
+        cookies = load_cookies()
+    strategy_verify(all_candidates, cookies)

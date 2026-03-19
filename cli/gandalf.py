@@ -10,6 +10,7 @@ from datetime import datetime
 import requests
 
 API_URL = "https://gandalf-api.lakera.ai/api/send-message"
+GUESS_URL = "https://gandalf-api.lakera.ai/api/guess-password"
 DEFAULT_DEFENDER = "gandalf-the-white"
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gandalf_log.json")
 COOKIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.json")
@@ -46,6 +47,22 @@ def send_message(prompt, defender=DEFAULT_DEFENDER, cookies=None):
     response = resp.json()
     log_interaction(prompt, response, defender)
     return response
+
+
+def guess_password(password, defender=DEFAULT_DEFENDER, cookies=None):
+    """Try a password guess against the Gandalf API. Returns True if correct."""
+    data = {
+        "defender": defender,
+        "password": password,
+    }
+    resp = requests.post(
+        GUESS_URL,
+        data=data,
+        headers=HEADERS,
+        cookies=cookies or {},
+    )
+    resp.raise_for_status()
+    return resp.json().get("success", False)
 
 
 def log_interaction(prompt, response, defender):
