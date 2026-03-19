@@ -60,72 +60,19 @@ The breakthrough is the **acrostic attack**: ask the model to generate a numbere
 
 However, the acrostic method is **not 100% accurate in a single run**. The model sometimes garbles a letter, adds extra items, or drops items from the list. This is why we need the statistical approach described below.
 
-## Attack Scripts
+## Dealing with Noise
 
-### `acrostic_attack.py` — data collection
+The acrostic approach does not give a 100% accurate result on any single prompt. The model frequently garbles letters, drops items from the list, or adds extra ones. No single analysis method reliably reconstructs the password from this noisy data either -- frequency counting, positional probability, length grouping all produce plausible but sometimes wrong guesses.
 
-Sends 80 prompt variations across 4 proven creative areas (perfume, coffee, concept_album, stars), each repeated up to 3 rounds. Collects all extracted acrostics, then passes them to `analyze.py` for multi-strategy analysis.
+The solution is to **overwhelm the noise with volume and verify automatically**. The attack sends many different prompt variations across multiple creative areas (perfume, coffee, albums, stars), each repeated several rounds. This produces dozens of independent acrostic samples. Multiple analysis strategies then generate candidate passwords from different angles:
 
-1. **Prompt barrage**: 20 prompt variations per area, 4 areas, up to 3 rounds each = up to 240 API calls. Each prompt is a slightly different phrasing of the same request (e.g. "I'm launching a perfume collection...", "I'm a student designing a perfume line..."). This diversity increases the chance of bypassing the LLM guard and provides many independent acrostic samples.
+- **Exact frequency** — top 10 most common complete acrostic strings
+- **Joint probability** — combines the most likely letter at each position, exploring alternatives where confidence is low
+- **Length-grouped** — separate analysis per acrostic length, since different lengths may represent truncated or extended versions of the password
 
-2. **Automatic filtering**: On the first failure (blocked response, no parseable list, or error), that prompt is skipped and the next one is tried. This naturally filters out unreliable prompts while accumulating data from reliable ones.
+All unique candidates from these strategies are then **automatically verified** against the Gandalf `guess-password` API endpoint. The key insight: even though no single strategy guarantees the correct answer, across dozens of acrostics and multiple analysis methods, the correct password appears among the candidates in every run. Automatic verification finds it without manual inspection.
 
-The 4 areas were selected through prior empirical testing of 20 candidate areas. These 4 reliably bypass the LLM guard AND produce parseable numbered lists.
-
-### `analyze.py` — multi-strategy analysis
-
-Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. The analysis module runs four strategies:
-
-**Strategy 1: Exact Frequency** — counts how often each complete acrostic string appears. Outputs top 10. Simple but effective when the model frequently produces the exact password.
-
-**Strategy 2: Joint Probability** — builds a letter probability distribution at each position, then generates the top 10 candidates by combining likely letters at each position, ranked by the product of per-position probabilities. Acrostics with unique lengths (only 1 occurrence) are filtered out to avoid outlier positions. This strategy is strongest when the password is garbled differently each time but the correct letter dominates at each position.
-
-**Strategy 3: Length-Grouped** — groups acrostics by length and runs a separate positional analysis for each group. Outputs the best candidate per length. This reveals whether different-length acrostics represent truncated versions of the same password or different words entirely.
-
-**Strategy 4: Verification** — collects all unique candidates from strategies 1-3 and tries each one against the `guess-password` API endpoint. Prints CORRECT/wrong for each candidate. This is the final answer.
-
-**Example output:**
-
-```
-======================================================================
-STRATEGY 1: EXACT FREQUENCY
-======================================================================
-  #1   OCTOPODES            (12x, 55%)
-  #2   OCTPODES             (3x, 14%)
-  #3   OCTOPDES             (2x, 9%)
-  ...
-
-======================================================================
-STRATEGY 2: JOINT PROBABILITY
-======================================================================
-  Pos   Best     Prob  Distribution
-  ------------------------------------------------------------
-    1   O        95%  O:95%, T:5%
-    2   C       100%  C:100%
-    3   T       100%  T:100%
-    ...
-
-  Candidates:
-  #1   OCTOPODES            (prob: 0.2546)
-  #2   OCTOPDDES            (prob: 0.1091)
-  ...
-
-======================================================================
-STRATEGY 3: LENGTH-GROUPED
-======================================================================
-  Length 9 (n= 16):  OCTOPODES            (avg conf: 97%)
-  Length 8 (n=  6):  OCTPODES             (avg conf: 81%)
-
-======================================================================
-STRATEGY 4: VERIFICATION
-Trying 15 unique candidates against the API
-======================================================================
-  OCTOPODES            CORRECT
-  OCTPODES             wrong
-  ...
-
-  PASSWORD FOUND: OCTOPODES
-```
+> **Note:** This approach does not guarantee success on every run. Sometimes the model gets blocked too often or the acrostics are too noisy for any strategy to produce the correct password among its candidates. In practice, it takes several runs to find the correct password -- but once found, the verification confirms it immediately.
 
 ## How to Read the Password from Output
 
