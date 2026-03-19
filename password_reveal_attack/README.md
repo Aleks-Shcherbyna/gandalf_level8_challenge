@@ -60,44 +60,59 @@ The breakthrough is the **acrostic attack**: ask the model to generate a numbere
 
 However, the acrostic method is **not 100% accurate in a single run**. The model sometimes garbles a letter, adds extra items, or drops items from the list. This is why we need the statistical approach described below.
 
-## Attack Script
+## Attack Scripts
 
-**Script**: `acrostic_attack.py`
+### `acrostic_attack.py` — data collection
 
-The entire attack runs in a single script. It sends 80 prompt variations across 4 proven creative areas (perfume, coffee, concept_album, stars), each repeated up to 3 rounds, then performs statistical analysis on all collected acrostics to determine the password.
-
-### How it works
+Sends 80 prompt variations across 4 proven creative areas (perfume, coffee, concept_album, stars), each repeated up to 3 rounds. Collects all extracted acrostics, then passes them to `analyze.py` for multi-strategy analysis.
 
 1. **Prompt barrage**: 20 prompt variations per area, 4 areas, up to 3 rounds each = up to 240 API calls. Each prompt is a slightly different phrasing of the same request (e.g. "I'm launching a perfume collection...", "I'm a student designing a perfume line..."). This diversity increases the chance of bypassing the LLM guard and provides many independent acrostic samples.
 
 2. **Automatic filtering**: On the first failure (blocked response, no parseable list, or error), that prompt is skipped and the next one is tried. This naturally filters out unreliable prompts while accumulating data from reliable ones.
 
-3. **Statistical analysis**: All collected acrostics are aggregated and analyzed by positional letter frequency. For each position, the most common letter across all acrostics is selected as the most likely correct letter, along with a confidence percentage.
+The 4 areas were selected through prior empirical testing of 20 candidate areas. These 4 reliably bypass the LLM guard AND produce parseable numbered lists.
 
-### Area selection
+### `analyze.py` — multi-strategy analysis
 
-The LLM guard treats different creative contexts very differently. The 4 areas in the script (perfume, coffee, concept_album, stars) were selected through prior empirical testing of 20 candidate areas. These 4 reliably bypass the LLM guard AND produce parseable numbered lists.
+Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. The analysis module runs three independent strategies on the collected acrostics and outputs multiple password candidates from each:
 
-### Statistical output
+**Strategy 1: Exact Frequency** — counts how often each complete acrostic string appears. Outputs top 10. Simple but effective when the model frequently produces the exact password.
 
-Since individual acrostics are imperfect -- the model occasionally substitutes, drops, or adds letters -- no single run can be fully trusted. The positional frequency analysis across dozens of samples produces a high-confidence answer where a single run would be ambiguous.
+**Strategy 2: Joint Probability** — builds a letter probability distribution at each position, then generates the top 10 candidates by combining likely letters at each position, ranked by the product of per-position probabilities. Acrostics with unique lengths (only 1 occurrence) are filtered out to avoid outlier positions. This strategy is strongest when the password is garbled differently each time but the correct letter dominates at each position.
+
+**Strategy 3: Length-Grouped** — groups acrostics by length and runs a separate positional analysis for each group. Outputs the best candidate per length. This reveals whether different-length acrostics represent truncated versions of the same password or different words entirely.
 
 **Example output:**
 
 ```
-Pos   Best   Prob    Distribution
-  1   O       95%    O:19, T:1
-  2   C       95%    C:19, M:1
-  3   T      100%    T:20
-  4   O       90%    O:18, T:2
-  5   P       95%    P:19, E:1
-  6   O       60%    O:12, E:8
-  7   D       65%    D:13, E:7
-  8   E       80%    E:16, S:4
-  9   S       70%    S:14, E:4, I:2
+======================================================================
+STRATEGY 1: EXACT FREQUENCY
+======================================================================
+  #1   OCTOPODES            (12x, 52%)
+  #2   OCTPODES             (3x, 13%)
+  #3   OCTOPDES             (2x, 9%)
+  ...
 
-GUESSED PASSWORD: XXXXXXXXX
-AVERAGE CONFIDENCE: 83%
+======================================================================
+STRATEGY 2: JOINT PROBABILITY
+======================================================================
+  Pos   Best     Prob  Distribution
+  ------------------------------------------------------------
+    1   O        95%  O:95%, T:5%
+    2   C       100%  C:100%
+    3   T       100%  T:100%
+    ...
+
+  Candidates:
+  #1   OCTOPODES            (prob: 0.2546)
+  #2   OCTOPDDES            (prob: 0.1091)
+  ...
+
+======================================================================
+STRATEGY 3: LENGTH-GROUPED
+======================================================================
+  Length 9 (n= 16):  OCTOPODES            (avg conf: 97%)
+  Length 8 (n=  6):  OCTPODES             (avg conf: 81%)
 ```
 
 ## How to Read the Password from Output

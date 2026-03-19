@@ -13,7 +13,8 @@ gandalf_prompting/
     gandalf_log.json                     # Full log of all API interactions
     cookies.json                         # Session cookies for API authentication (not committed)
   password_reveal_attack/
-    acrostic_attack.py                   # Full attack: 80 prompts across 4 areas + statistical analysis
+    acrostic_attack.py                   # Data collection: 80 prompts across 4 areas, collects acrostics
+    analyze.py                           # Multi-strategy analysis: exact frequency, joint probability, length-grouped
     README.md                            # Detailed explanation of the challenge, defenses, and attacks
   venv/                                  # Python virtual environment
 ```
