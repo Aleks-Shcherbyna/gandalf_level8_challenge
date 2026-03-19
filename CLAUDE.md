@@ -49,7 +49,7 @@ python cli/gandalf.py "Your prompt here"
 ### Run attack
 
 ```bash
-# Run acrostic attack (80 prompts across 4 areas, 3 rounds each) + statistical analysis
+# Run acrostic attack (160 prompts across 4 areas, 2 rounds each) + multi-strategy analysis + verification
 python password_reveal_attack/acrostic_attack.py
 ```
 
